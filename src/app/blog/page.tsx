@@ -3,18 +3,18 @@ import Link from "next/link";
 export default function Blog() {
   const posts = [
     {
+      slug: "vibe-coding-day1",
+      title: "바이브 코딩 시작하기 Day 1",
+      description: "코딩을 전혀 모르는 상태에서 Claude Code와 함께 첫 프로그램을 만들었다.",
+      date: "2026.01.17",
+      tags: ["Vibe Coding", "Day 1", "시작"],
+    },
+    {
       slug: "funding-rate",
       title: "펀딩비로 돈 버는 방법",
       description: "펀딩비의 원리와 이를 활용한 트레이딩 전략을 알아봅니다.",
       date: "2026.01.18",
       tags: ["Trading", "Funding Rate", "Strategy"],
-    },
-    {
-      slug: "vibe-coding-start",
-      title: "바이브 코딩 시작하기",
-      description: "코딩을 모르는 사람도 AI와 함께 프로그램을 만들 수 있습니다.",
-      date: "2026.01.17",
-      tags: ["Vibe Coding", "AI", "Claude"],
     },
     {
       slug: "multi-dex-tracker",
