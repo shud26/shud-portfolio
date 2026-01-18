@@ -16,20 +16,6 @@ export default function Blog() {
       date: "2026.01.17",
       tags: ["Vibe Coding", "Day 1", "시작"],
     },
-    {
-      slug: "funding-rate",
-      title: "펀딩비로 돈 버는 방법",
-      description: "펀딩비의 원리와 이를 활용한 트레이딩 전략을 알아봅니다.",
-      date: "2026.01.18",
-      tags: ["Trading", "Funding Rate", "Strategy"],
-    },
-    {
-      slug: "multi-dex-tracker",
-      title: "멀티 DEX 펀딩비 트래커 만들기",
-      description: "여러 거래소의 펀딩비를 동시에 모니터링하는 방법",
-      date: "2026.01.18",
-      tags: ["Python", "DEX", "Automation"],
-    },
   ];
 
   return (
