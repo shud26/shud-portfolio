@@ -13,6 +13,7 @@ interface Todo {
 }
 
 export default function TodoPage() {
+  const [mounted, setMounted] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState(false);
@@ -22,8 +23,9 @@ export default function TodoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Check authentication on mount
+  // Wait for client-side mount
   useEffect(() => {
+    setMounted(true);
     const auth = sessionStorage.getItem("shud-todo-auth");
     if (auth === "true") {
       setIsAuthenticated(true);
@@ -32,13 +34,22 @@ export default function TodoPage() {
 
   // Load todos from localStorage
   useEffect(() => {
-    if (isAuthenticated) {
+    if (mounted && isAuthenticated) {
       const saved = localStorage.getItem("shud-todos");
       if (saved) {
         setTodos(JSON.parse(saved));
       }
     }
-  }, [isAuthenticated]);
+  }, [mounted, isAuthenticated]);
+
+  // Show loading until mounted
+  if (!mounted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   const handlePinSubmit = () => {
     if (pin === CORRECT_PIN) {
