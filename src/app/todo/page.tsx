@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+const CORRECT_PIN = "1507";
+
 interface Todo {
   id: string;
   text: string;
@@ -11,19 +13,93 @@ interface Todo {
 }
 
 export default function TodoPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState(false);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodo, setNewTodo] = useState("");
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
   const [isLoading, setIsLoading] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // Load todos from localStorage
+  // Check authentication on mount
   useEffect(() => {
-    const saved = localStorage.getItem("shud-todos");
-    if (saved) {
-      setTodos(JSON.parse(saved));
+    const auth = sessionStorage.getItem("shud-todo-auth");
+    if (auth === "true") {
+      setIsAuthenticated(true);
     }
   }, []);
+
+  // Load todos from localStorage
+  useEffect(() => {
+    if (isAuthenticated) {
+      const saved = localStorage.getItem("shud-todos");
+      if (saved) {
+        setTodos(JSON.parse(saved));
+      }
+    }
+  }, [isAuthenticated]);
+
+  const handlePinSubmit = () => {
+    if (pin === CORRECT_PIN) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("shud-todo-auth", "true");
+      setPinError(false);
+    } else {
+      setPinError(true);
+      setPin("");
+    }
+  };
+
+  // PIN Lock Screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <div className="w-full max-w-sm">
+          <div className="bg-[#141414] border border-[#262626] rounded-2xl p-8 text-center">
+            <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Todo List</h1>
+            <p className="text-[#737373] mb-6">PIN을 입력하세요</p>
+
+            <div className="space-y-4">
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => {
+                  setPin(e.target.value.replace(/\D/g, "").slice(0, 4));
+                  setPinError(false);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handlePinSubmit()}
+                placeholder="••••"
+                maxLength={4}
+                className={`w-full text-center text-2xl tracking-[1em] bg-[#0a0a0a] border rounded-xl px-4 py-4 text-white placeholder-[#525252] focus:outline-none transition ${
+                  pinError ? "border-red-500" : "border-[#262626] focus:border-blue-500"
+                }`}
+                autoFocus
+              />
+              {pinError && (
+                <p className="text-red-400 text-sm">PIN이 틀렸습니다</p>
+              )}
+              <button
+                onClick={handlePinSubmit}
+                disabled={pin.length !== 4}
+                className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-[#262626] disabled:text-[#525252] text-white py-3 rounded-xl font-medium transition"
+              >
+                확인
+              </button>
+            </div>
+          </div>
+          <p className="text-center text-[#525252] text-xs mt-4">
+            shud의 개인 Todo List입니다
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Save todos to localStorage
   useEffect(() => {
