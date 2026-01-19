@@ -17,59 +17,13 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      // Fetch from Hyperliquid
-      const hlRes = await fetch("https://api.hyperliquid.xyz/info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "metaAndAssetCtxs" }),
-      });
-      const hlData = await hlRes.json();
+      const res = await fetch("/api/funding");
+      const json = await res.json();
 
-      const coins = ["BTC", "ETH", "SOL"];
-      const hlNames = hlData[0].universe.map((a: { name: string }) => a.name);
-
-      const result: FundingData[] = coins.map((coin) => {
-        const hlIndex = hlNames.indexOf(coin);
-        const hlCtx = hlIndex >= 0 ? hlData[1][hlIndex] : null;
-
-        return {
-          coin,
-          hyperliquid: hlCtx ? parseFloat(hlCtx.funding) * 100 : null,
-          pacifica: null,
-          variational: null,
-          price: hlCtx ? parseFloat(hlCtx.markPx) : null,
-        };
-      });
-
-      // Fetch Pacifica for each coin
-      for (const item of result) {
-        try {
-          const pcRes = await fetch(
-            `https://api.pacifica.fi/api/v1/funding_rate/history?symbol=${item.coin}&limit=1`
-          );
-          const pcData = await pcRes.json();
-          if (pcData.success && pcData.data?.[0]) {
-            item.pacifica = parseFloat(pcData.data[0].funding_rate) * 100;
-          }
-        } catch {}
+      if (json.success) {
+        setData(json.data);
+        setLastUpdate(new Date().toLocaleTimeString("ko-KR"));
       }
-
-      // Fetch Variational
-      try {
-        const vrRes = await fetch(
-          "https://omni-client-api.prod.ap-northeast-1.variational.io/metadata/stats"
-        );
-        const vrData = await vrRes.json();
-        for (const listing of vrData.listings || []) {
-          const item = result.find((r) => r.coin === listing.ticker);
-          if (item) {
-            item.variational = parseFloat(listing.funding_rate) / 8; // 8시간 → 1시간
-          }
-        }
-      } catch {}
-
-      setData(result);
-      setLastUpdate(new Date().toLocaleTimeString("ko-KR"));
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
