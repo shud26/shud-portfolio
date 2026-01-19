@@ -42,6 +42,13 @@ export default function TodoPage() {
     }
   }, [mounted, isAuthenticated]);
 
+  // Save todos to localStorage
+  useEffect(() => {
+    if (mounted && isAuthenticated) {
+      localStorage.setItem("shud-todos", JSON.stringify(todos));
+    }
+  }, [todos, mounted, isAuthenticated]);
+
   // Show loading until mounted
   if (!mounted) {
     return (
@@ -111,11 +118,6 @@ export default function TodoPage() {
       </div>
     );
   }
-
-  // Save todos to localStorage
-  useEffect(() => {
-    localStorage.setItem("shud-todos", JSON.stringify(todos));
-  }, [todos]);
 
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message });
