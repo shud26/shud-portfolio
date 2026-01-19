@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface FundingData {
   coin: string;
@@ -8,68 +8,169 @@ interface FundingData {
   pacifica: number | null;
   variational: number | null;
   price: number | null;
+  spread: number | null;
+  bestLong: string | null;
+  bestShort: string | null;
+}
+
+interface ArbitrageOpportunity {
+  coin: string;
+  spread: number;
+  longDex: string;
+  shortDex: string;
+  longRate: number;
+  shortRate: number;
+  estimatedDaily: number;
 }
 
 export default function Dashboard() {
   const [data, setData] = useState<FundingData[]>([]);
+  const [arbitrage, setArbitrage] = useState<ArbitrageOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
+  const [countdown, setCountdown] = useState(60);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    setIsRefreshing(true);
     try {
       const res = await fetch("/api/funding");
       const json = await res.json();
 
       if (json.success) {
         setData(json.data);
+        setArbitrage(json.arbitrage || []);
         setLastUpdate(new Date().toLocaleTimeString("ko-KR"));
+        setCountdown(60);
       }
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
       setLoading(false);
     }
-  };
+    setIsRefreshing(false);
+  }, []);
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000); // 1분마다 갱신
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 60));
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const formatRate = (rate: number | null) => {
-    if (rate === null) return "N/A";
-    const color = rate > 0 ? "text-red-400" : rate < 0 ? "text-green-400" : "text-[#737373]";
-    return <span className={color}>{rate >= 0 ? "+" : ""}{rate.toFixed(4)}%</span>;
+  const formatRate = (rate: number | null, highlight = false) => {
+    if (rate === null) return <span className="text-[#525252]">-</span>;
+    const isPositive = rate > 0;
+    const isNegative = rate < 0;
+    const baseColor = isPositive ? "text-red-400" : isNegative ? "text-green-400" : "text-[#737373]";
+    const bgColor = highlight && Math.abs(rate) > 0.01 ? (isPositive ? "bg-red-500/10" : "bg-green-500/10") : "";
+    return (
+      <span className={`${baseColor} ${bgColor} ${highlight ? "px-2 py-1 rounded" : ""}`}>
+        {rate >= 0 ? "+" : ""}{rate.toFixed(4)}%
+      </span>
+    );
   };
 
   const formatPrice = (price: number | null) => {
-    if (price === null) return "N/A";
+    if (price === null) return "-";
     return `$${price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const getDexShortName = (dex: string) => {
+    const names: Record<string, string> = {
+      Hyperliquid: "HL",
+      Pacifica: "PC",
+      Variational: "VR",
+    };
+    return names[dex] || dex;
+  };
+
   return (
-    <div className="min-h-screen max-w-5xl mx-auto px-6 py-20">
-      <div className="mb-12">
+    <div className="min-h-screen max-w-6xl mx-auto px-6 py-20">
+      {/* Header */}
+      <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-4xl font-bold">Dashboard</h1>
-          <div className="flex items-center gap-2 text-sm text-[#737373]">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Live
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm bg-[#141414] border border-[#262626] rounded-lg px-3 py-2">
+              <span className={`w-2 h-2 rounded-full ${isRefreshing ? "bg-yellow-400 animate-pulse" : "bg-green-400 animate-pulse"}`}></span>
+              <span className="text-[#737373]">
+                {isRefreshing ? "업데이트 중..." : `${countdown}초 후 갱신`}
+              </span>
+            </div>
+            <button
+              onClick={fetchData}
+              disabled={isRefreshing}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-500/50 text-white px-4 py-2 rounded-lg text-sm transition"
+            >
+              새로고침
+            </button>
           </div>
         </div>
-        <p className="text-[#737373]">실시간 펀딩비 모니터링</p>
+        <p className="text-[#737373]">실시간 펀딩비 모니터링 · 3개 DEX · 9개 코인</p>
         {lastUpdate && (
-          <p className="text-xs text-[#525252] mt-2">마지막 업데이트: {lastUpdate}</p>
+          <p className="text-xs text-[#525252] mt-1">마지막 업데이트: {lastUpdate}</p>
         )}
       </div>
+
+      {/* Top Arbitrage Opportunities */}
+      {arbitrage.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold mb-4">Best Arbitrage Opportunities</h2>
+          <div className="grid md:grid-cols-3 gap-4">
+            {arbitrage.map((opp, idx) => (
+              <div
+                key={opp.coin}
+                className={`bg-[#141414] border rounded-xl p-5 ${
+                  idx === 0 ? "border-yellow-500/50 bg-yellow-500/5" : "border-[#262626]"
+                }`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <span className="text-2xl font-bold">{opp.coin}</span>
+                    {idx === 0 && (
+                      <span className="ml-2 text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded">
+                        TOP
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xl font-mono text-green-400">
+                    +{opp.spread.toFixed(4)}%
+                  </span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-[#737373]">Long ({getDexShortName(opp.longDex)})</span>
+                    <span className="text-green-400">{opp.longRate >= 0 ? "+" : ""}{opp.longRate.toFixed(4)}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#737373]">Short ({getDexShortName(opp.shortDex)})</span>
+                    <span className="text-red-400">{opp.shortRate >= 0 ? "+" : ""}{opp.shortRate.toFixed(4)}%</span>
+                  </div>
+                  <div className="pt-2 border-t border-[#262626] flex justify-between">
+                    <span className="text-[#737373]">예상 일일 수익</span>
+                    <span className="text-blue-400 font-semibold">+{opp.estimatedDaily.toFixed(4)}%</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Funding Rate Table */}
       <div className="bg-[#141414] border border-[#262626] rounded-xl overflow-hidden mb-8">
         <div className="p-6 border-b border-[#262626]">
-          <h2 className="text-xl font-semibold">펀딩비 비교</h2>
+          <h2 className="text-xl font-semibold">All Funding Rates</h2>
           <p className="text-sm text-[#737373] mt-1">
-            🔴 양수 = 숏 유리 · 🟢 음수 = 롱 유리
+            🔴 양수 = 숏 유리 (롱이 숏에게 지불) · 🟢 음수 = 롱 유리 (숏이 롱에게 지불)
           </p>
         </div>
 
@@ -84,20 +185,59 @@ export default function Dashboard() {
               <thead className="bg-[#1a1a1a]">
                 <tr>
                   <th className="text-left p-4 font-medium text-[#737373]">코인</th>
-                  <th className="text-left p-4 font-medium text-[#737373]">가격</th>
-                  <th className="text-right p-4 font-medium text-[#737373]">Hyperliquid</th>
-                  <th className="text-right p-4 font-medium text-[#737373]">Pacifica</th>
-                  <th className="text-right p-4 font-medium text-[#737373]">Variational</th>
+                  <th className="text-right p-4 font-medium text-[#737373]">가격</th>
+                  <th className="text-right p-4 font-medium text-[#737373]">
+                    <span className="flex items-center justify-end gap-1">
+                      Hyperliquid
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">HL</span>
+                    </span>
+                  </th>
+                  <th className="text-right p-4 font-medium text-[#737373]">
+                    <span className="flex items-center justify-end gap-1">
+                      Pacifica
+                      <span className="text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">PC</span>
+                    </span>
+                  </th>
+                  <th className="text-right p-4 font-medium text-[#737373]">
+                    <span className="flex items-center justify-end gap-1">
+                      Variational
+                      <span className="text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">VR</span>
+                    </span>
+                  </th>
+                  <th className="text-right p-4 font-medium text-[#737373]">스프레드</th>
+                  <th className="text-center p-4 font-medium text-[#737373]">전략</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((item) => (
-                  <tr key={item.coin} className="border-t border-[#262626] hover:bg-[#1a1a1a]">
-                    <td className="p-4 font-semibold">{item.coin}</td>
-                    <td className="p-4 text-[#a3a3a3]">{formatPrice(item.price)}</td>
-                    <td className="p-4 text-right font-mono">{formatRate(item.hyperliquid)}</td>
-                    <td className="p-4 text-right font-mono">{formatRate(item.pacifica)}</td>
-                    <td className="p-4 text-right font-mono">{formatRate(item.variational)}</td>
+                  <tr key={item.coin} className="border-t border-[#262626] hover:bg-[#1a1a1a] transition">
+                    <td className="p-4">
+                      <span className="font-semibold">{item.coin}</span>
+                    </td>
+                    <td className="p-4 text-right text-[#a3a3a3] font-mono">{formatPrice(item.price)}</td>
+                    <td className="p-4 text-right font-mono">{formatRate(item.hyperliquid, true)}</td>
+                    <td className="p-4 text-right font-mono">{formatRate(item.pacifica, true)}</td>
+                    <td className="p-4 text-right font-mono">{formatRate(item.variational, true)}</td>
+                    <td className="p-4 text-right font-mono">
+                      {item.spread !== null ? (
+                        <span className={item.spread > 0.005 ? "text-green-400 font-semibold" : "text-[#737373]"}>
+                          {item.spread.toFixed(4)}%
+                        </span>
+                      ) : (
+                        <span className="text-[#525252]">-</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-center">
+                      {item.bestLong && item.bestShort && item.spread && item.spread > 0.001 ? (
+                        <span className="text-xs">
+                          <span className="text-green-400">L:{getDexShortName(item.bestLong)}</span>
+                          {" / "}
+                          <span className="text-red-400">S:{getDexShortName(item.bestShort)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[#525252] text-xs">-</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -117,10 +257,10 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-[#141414] border border-[#262626] rounded-xl p-6">
-          <h3 className="text-lg font-semibold mb-2">차익거래</h3>
+          <h3 className="text-lg font-semibold mb-2">차익거래 전략</h3>
           <p className="text-sm text-[#737373]">
-            DEX 간 펀딩비 차이가 클 때, 높은 곳에서 숏 + 낮은 곳에서 롱으로
-            펀딩비 차익을 얻을 수 있습니다.
+            DEX 간 펀딩비 차이가 클 때, <span className="text-green-400">낮은 곳에서 롱</span> +{" "}
+            <span className="text-red-400">높은 곳에서 숏</span>으로 차익을 얻습니다.
           </p>
         </div>
 
@@ -131,6 +271,16 @@ export default function Dashboard() {
             조건 충족 시 텔레그램으로 알림을 보내드립니다.
           </p>
         </div>
+      </div>
+
+      {/* DEX Info */}
+      <div className="mt-8 text-center text-xs text-[#525252]">
+        <p>
+          Data from:{" "}
+          <span className="text-blue-400">Hyperliquid</span> ·{" "}
+          <span className="text-purple-400">Pacifica (Solana)</span> ·{" "}
+          <span className="text-orange-400">Variational (Arbitrum)</span>
+        </p>
       </div>
     </div>
   );

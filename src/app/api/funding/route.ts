@@ -6,17 +6,37 @@ interface FundingData {
   pacifica: number | null;
   variational: number | null;
   price: number | null;
+  maxRate: number | null;
+  minRate: number | null;
+  spread: number | null;
+  bestLong: string | null;
+  bestShort: string | null;
+}
+
+interface ArbitrageOpportunity {
+  coin: string;
+  spread: number;
+  longDex: string;
+  shortDex: string;
+  longRate: number;
+  shortRate: number;
+  estimatedDaily: number;
 }
 
 export async function GET() {
   try {
-    const coins = ["BTC", "ETH", "SOL"];
+    const coins = ["BTC", "ETH", "SOL", "DOGE", "AVAX", "ARB", "SUI", "LINK", "XRP"];
     const result: FundingData[] = coins.map((coin) => ({
       coin,
       hyperliquid: null,
       pacifica: null,
       variational: null,
       price: null,
+      maxRate: null,
+      minRate: null,
+      spread: null,
+      bestLong: null,
+      bestShort: null,
     }));
 
     // Fetch from Hyperliquid
@@ -75,9 +95,42 @@ export async function GET() {
       console.error("Variational error:", e);
     }
 
+    // Calculate arbitrage opportunities
+    for (const item of result) {
+      const rates: { dex: string; rate: number }[] = [];
+      if (item.hyperliquid !== null) rates.push({ dex: "Hyperliquid", rate: item.hyperliquid });
+      if (item.pacifica !== null) rates.push({ dex: "Pacifica", rate: item.pacifica });
+      if (item.variational !== null) rates.push({ dex: "Variational", rate: item.variational });
+
+      if (rates.length >= 2) {
+        const sorted = [...rates].sort((a, b) => a.rate - b.rate);
+        item.minRate = sorted[0].rate;
+        item.maxRate = sorted[sorted.length - 1].rate;
+        item.spread = item.maxRate - item.minRate;
+        item.bestLong = sorted[0].dex; // lowest rate = best for long
+        item.bestShort = sorted[sorted.length - 1].dex; // highest rate = best for short
+      }
+    }
+
+    // Find top arbitrage opportunities
+    const arbitrageOpportunities: ArbitrageOpportunity[] = result
+      .filter((item) => item.spread !== null && item.spread > 0)
+      .map((item) => ({
+        coin: item.coin,
+        spread: item.spread!,
+        longDex: item.bestLong!,
+        shortDex: item.bestShort!,
+        longRate: item.minRate!,
+        shortRate: item.maxRate!,
+        estimatedDaily: item.spread! * 3, // 8시간마다 3번 = 일일 예상
+      }))
+      .sort((a, b) => b.spread - a.spread)
+      .slice(0, 3);
+
     return NextResponse.json({
       success: true,
       data: result,
+      arbitrage: arbitrageOpportunities,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
