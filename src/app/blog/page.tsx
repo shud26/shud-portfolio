@@ -3,6 +3,13 @@ import Link from "next/link";
 export default function Blog() {
   const posts = [
     {
+      slug: "vibe-coding-day4",
+      title: "바이브 코딩 시작하기 Day 4",
+      description: "Cross-DEX 펀딩비 차익거래 봇, Google Calendar 연동, Todo 풀 업그레이드까지!",
+      date: "2026.01.20",
+      tags: ["Vibe Coding", "Day 4", "Trading Bot"],
+    },
+    {
       slug: "vibe-coding-day3",
       title: "바이브 코딩 시작하기 Day 3",
       description: "대시보드 실시간 연동, Todo List + 텔레그램 알림, 그리고 React Hooks 버그와의 싸움.",

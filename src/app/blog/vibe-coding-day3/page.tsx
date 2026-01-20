@@ -177,8 +177,8 @@ useEffect(() => {
           <Link href="/blog/vibe-coding-day2" className="text-[#737373] hover:text-white transition">
             ← Day 2
           </Link>
-          <Link href="/blog" className="text-blue-400 hover:underline">
-            블로그 →
+          <Link href="/blog/vibe-coding-day4" className="text-blue-400 hover:underline">
+            Day 4 →
           </Link>
         </div>
       </footer>
