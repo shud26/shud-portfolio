@@ -42,6 +42,10 @@ export default function RootLayout({
               <Link href="/dashboard" className="text-[#737373] hover:text-white transition">
                 Dashboard
               </Link>
+              <Link href="/trade" className="text-[#737373] hover:text-white transition flex items-center gap-1">
+                <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+                Trade
+              </Link>
               <Link href="/todo" className="text-[#737373] hover:text-white transition flex items-center gap-1">
                 <span className="w-2 h-2 bg-green-400 rounded-full"></span>
                 Todo
