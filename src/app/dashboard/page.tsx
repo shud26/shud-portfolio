@@ -23,9 +23,19 @@ interface ArbitrageOpportunity {
   estimatedDaily: number;
 }
 
+interface KimchiPremium {
+  coin: string;
+  upbitKRW: number | null;
+  binanceUSD: number | null;
+  premium: number | null;
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<FundingData[]>([]);
   const [arbitrage, setArbitrage] = useState<ArbitrageOpportunity[]>([]);
+  const [kimchi, setKimchi] = useState<KimchiPremium[]>([]);
+  const [avgKimchi, setAvgKimchi] = useState<number>(0);
+  const [exchangeRate, setExchangeRate] = useState<number>(1450);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [countdown, setCountdown] = useState(60);
@@ -34,15 +44,28 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const res = await fetch("/api/funding");
-      const json = await res.json();
+      // Fetch funding data and kimchi premium in parallel
+      const [fundingRes, kimchiRes] = await Promise.all([
+        fetch("/api/funding"),
+        fetch("/api/kimchi"),
+      ]);
 
-      if (json.success) {
-        setData(json.data);
-        setArbitrage(json.arbitrage || []);
-        setLastUpdate(new Date().toLocaleTimeString("ko-KR"));
-        setCountdown(60);
+      const fundingJson = await fundingRes.json();
+      const kimchiJson = await kimchiRes.json();
+
+      if (fundingJson.success) {
+        setData(fundingJson.data);
+        setArbitrage(fundingJson.arbitrage || []);
       }
+
+      if (kimchiJson.success) {
+        setKimchi(kimchiJson.data);
+        setAvgKimchi(kimchiJson.avgPremium || 0);
+        setExchangeRate(kimchiJson.exchangeRate || 1450);
+      }
+
+      setLastUpdate(new Date().toLocaleTimeString("ko-KR"));
+      setCountdown(60);
       setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -114,10 +137,77 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-        <p className="text-[#737373]">실시간 펀딩비 모니터링 · 3개 DEX · 9개 코인</p>
+        <p className="text-[#737373]">실시간 펀딩비 + 김치 프리미엄 모니터링</p>
         {lastUpdate && (
           <p className="text-xs text-[#525252] mt-1">마지막 업데이트: {lastUpdate}</p>
         )}
+      </div>
+
+      {/* Kimchi Premium Section */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Kimchi Premium (김치 프리미엄)</h2>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-[#737373]">
+              환율: ${exchangeRate.toLocaleString()}원
+            </span>
+            <span className={`text-lg font-bold ${avgKimchi > 0 ? "text-red-400" : "text-green-400"}`}>
+              평균 {avgKimchi >= 0 ? "+" : ""}{avgKimchi.toFixed(2)}%
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {kimchi.slice(0, 10).map((item) => (
+            <div
+              key={item.coin}
+              className={`bg-[#141414] border rounded-lg p-4 ${
+                item.premium !== null && item.premium > 3
+                  ? "border-red-500/50 bg-red-500/5"
+                  : item.premium !== null && item.premium < -1
+                  ? "border-green-500/50 bg-green-500/5"
+                  : "border-[#262626]"
+              }`}
+            >
+              <div className="flex justify-between items-start mb-2">
+                <span className="font-semibold">{item.coin}</span>
+                <span
+                  className={`text-sm font-mono font-bold ${
+                    item.premium === null
+                      ? "text-[#525252]"
+                      : item.premium > 2
+                      ? "text-red-400"
+                      : item.premium > 0
+                      ? "text-orange-400"
+                      : "text-green-400"
+                  }`}
+                >
+                  {item.premium !== null
+                    ? `${item.premium >= 0 ? "+" : ""}${item.premium.toFixed(2)}%`
+                    : "-"}
+                </span>
+              </div>
+              <div className="text-xs text-[#737373] space-y-1">
+                <div className="flex justify-between">
+                  <span>업비트</span>
+                  <span className="text-[#a3a3a3]">
+                    {item.upbitKRW ? `₩${item.upbitKRW.toLocaleString()}` : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>바이낸스</span>
+                  <span className="text-[#a3a3a3]">
+                    {item.binanceUSD ? `$${item.binanceUSD.toLocaleString()}` : "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-3 text-xs text-[#525252]">
+          🔴 양수 = 한국이 비쌈 (역프 기회) · 🟢 음수 = 한국이 쌈 (정프 기회)
+        </div>
       </div>
 
       {/* Top Arbitrage Opportunities */}
