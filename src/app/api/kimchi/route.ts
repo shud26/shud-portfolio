@@ -2,36 +2,36 @@ import { NextResponse } from "next/server";
 
 interface KimchiPremium {
   coin: string;
-  upbitKRW: number | null;
-  binanceUSD: number | null;
+  krwPrice: number | null;
+  usdPrice: number | null;
   premium: number | null;
 }
 
-// 주요 코인들 (업비트에서 거래량 많은 것들)
+// CoinGecko ID 매핑
 const COINS = [
-  { symbol: "BTC", upbit: "KRW-BTC", binance: "BTCUSDT" },
-  { symbol: "ETH", upbit: "KRW-ETH", binance: "ETHUSDT" },
-  { symbol: "XRP", upbit: "KRW-XRP", binance: "XRPUSDT" },
-  { symbol: "SOL", upbit: "KRW-SOL", binance: "SOLUSDT" },
-  { symbol: "DOGE", upbit: "KRW-DOGE", binance: "DOGEUSDT" },
-  { symbol: "ADA", upbit: "KRW-ADA", binance: "ADAUSDT" },
-  { symbol: "AVAX", upbit: "KRW-AVAX", binance: "AVAXUSDT" },
-  { symbol: "LINK", upbit: "KRW-LINK", binance: "LINKUSDT" },
-  { symbol: "DOT", upbit: "KRW-DOT", binance: "DOTUSDT" },
-  { symbol: "MATIC", upbit: "KRW-MATIC", binance: "MATICUSDT" },
+  { symbol: "BTC", geckoId: "bitcoin" },
+  { symbol: "ETH", geckoId: "ethereum" },
+  { symbol: "XRP", geckoId: "ripple" },
+  { symbol: "SOL", geckoId: "solana" },
+  { symbol: "DOGE", geckoId: "dogecoin" },
+  { symbol: "ADA", geckoId: "cardano" },
+  { symbol: "AVAX", geckoId: "avalanche-2" },
+  { symbol: "LINK", geckoId: "chainlink" },
+  { symbol: "DOT", geckoId: "polkadot" },
+  { symbol: "MATIC", geckoId: "matic-network" },
 ];
 
 export async function GET() {
   try {
     const result: KimchiPremium[] = COINS.map((coin) => ({
       coin: coin.symbol,
-      upbitKRW: null,
-      binanceUSD: null,
+      krwPrice: null,
+      usdPrice: null,
       premium: null,
     }));
 
-    // 1. 환율 가져오기 (USD/KRW)
-    let exchangeRate = 1450; // 기본값
+    // 환율 가져오기
+    let exchangeRate = 1450;
     try {
       const rateRes = await fetch(
         "https://api.exchangerate-api.com/v4/latest/USD",
@@ -43,55 +43,32 @@ export async function GET() {
       console.error("Exchange rate error:", e);
     }
 
-    // 2. 업비트 가격 가져오기
+    // CoinGecko에서 KRW, USD 가격 가져오기
     try {
-      const markets = COINS.map((c) => c.upbit).join(",");
-      const upbitRes = await fetch(
-        `https://api.upbit.com/v1/ticker?markets=${markets}`,
+      const ids = COINS.map((c) => c.geckoId).join(",");
+      const geckoRes = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=krw,usd`,
         { cache: "no-store" }
       );
-      const upbitData = await upbitRes.json();
+      const geckoData = await geckoRes.json();
 
-      for (const ticker of upbitData) {
-        const coin = COINS.find((c) => c.upbit === ticker.market);
-        if (coin) {
-          const item = result.find((r) => r.coin === coin.symbol);
-          if (item) {
-            item.upbitKRW = ticker.trade_price;
+      for (const coin of COINS) {
+        const item = result.find((r) => r.coin === coin.symbol);
+        const data = geckoData[coin.geckoId];
+
+        if (item && data) {
+          item.krwPrice = data.krw || null;
+          item.usdPrice = data.usd || null;
+
+          // 김프 계산: (KRW가격/환율 - USD가격) / USD가격 * 100
+          if (item.krwPrice && item.usdPrice) {
+            const krwToUsd = item.krwPrice / exchangeRate;
+            item.premium = ((krwToUsd - item.usdPrice) / item.usdPrice) * 100;
           }
         }
       }
     } catch (e) {
-      console.error("Upbit error:", e);
-    }
-
-    // 3. 바이낸스 가격 가져오기
-    try {
-      const binanceRes = await fetch(
-        "https://api.binance.com/api/v3/ticker/price",
-        { cache: "no-store" }
-      );
-      const binanceData = await binanceRes.json();
-
-      for (const ticker of binanceData) {
-        const coin = COINS.find((c) => c.binance === ticker.symbol);
-        if (coin) {
-          const item = result.find((r) => r.coin === coin.symbol);
-          if (item) {
-            item.binanceUSD = parseFloat(ticker.price);
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Binance error:", e);
-    }
-
-    // 4. 김프 계산
-    for (const item of result) {
-      if (item.upbitKRW && item.binanceUSD) {
-        const upbitUSD = item.upbitKRW / exchangeRate;
-        item.premium = ((upbitUSD - item.binanceUSD) / item.binanceUSD) * 100;
-      }
+      console.error("CoinGecko error:", e);
     }
 
     // 김프 높은 순으로 정렬

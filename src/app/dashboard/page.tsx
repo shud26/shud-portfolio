@@ -25,8 +25,8 @@ interface ArbitrageOpportunity {
 
 interface KimchiPremium {
   coin: string;
-  upbitKRW: number | null;
-  binanceUSD: number | null;
+  krwPrice: number | null;
+  usdPrice: number | null;
   premium: number | null;
 }
 
@@ -189,15 +189,15 @@ export default function Dashboard() {
               </div>
               <div className="text-xs text-[#737373] space-y-1">
                 <div className="flex justify-between">
-                  <span>업비트</span>
+                  <span>KRW</span>
                   <span className="text-[#a3a3a3]">
-                    {item.upbitKRW ? `₩${item.upbitKRW.toLocaleString()}` : "-"}
+                    {item.krwPrice ? `₩${item.krwPrice.toLocaleString()}` : "-"}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>바이낸스</span>
+                  <span>USD</span>
                   <span className="text-[#a3a3a3]">
-                    {item.binanceUSD ? `$${item.binanceUSD.toLocaleString()}` : "-"}
+                    {item.usdPrice ? `$${item.usdPrice.toLocaleString()}` : "-"}
                   </span>
                 </div>
               </div>
