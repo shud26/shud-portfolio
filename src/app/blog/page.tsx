@@ -3,6 +3,13 @@ import Link from "next/link";
 export default function Blog() {
   const posts = [
     {
+      slug: "vibe-coding-day8",
+      title: "바이브 코딩 시작하기 Day 8",
+      description: "Triangle Dice를 Base Mini App으로 변환! VPN으로 한국 차단 우회하고 Account Association 완료.",
+      date: "2026.01.24",
+      tags: ["Vibe Coding", "Day 8", "Base Mini App"],
+    },
+    {
       slug: "vibe-coding-day7",
       title: "바이브 코딩 시작하기 Day 7",
       description: "CEX/DEX 가격 갭 모니터링 완성! 5개 거래소, 500개 코인 실시간 추적.",

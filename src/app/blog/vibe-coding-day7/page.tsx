@@ -166,7 +166,9 @@ export default function VibeCodingDay7() {
           <Link href="/blog/vibe-coding-day6" className="text-[#737373] hover:text-white transition">
             ← Day 6
           </Link>
-          <span className="text-[#525252]">Day 8 coming soon...</span>
+          <Link href="/blog/vibe-coding-day8" className="text-[#737373] hover:text-white transition">
+            Day 8 →
+          </Link>
         </div>
       </footer>
     </article>
