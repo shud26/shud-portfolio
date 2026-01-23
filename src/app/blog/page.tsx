@@ -3,6 +3,13 @@ import Link from "next/link";
 export default function Blog() {
   const posts = [
     {
+      slug: "vibe-coding-day7",
+      title: "바이브 코딩 시작하기 Day 7",
+      description: "CEX/DEX 가격 갭 모니터링 완성! 5개 거래소, 500개 코인 실시간 추적.",
+      date: "2026.01.23",
+      tags: ["Vibe Coding", "Day 7", "갭 매매"],
+    },
+    {
       slug: "vibe-coding-day6",
       title: "바이브 코딩 시작하기 Day 6",
       description: "업비트 상장 알림 도전기. 공지 API가 없어서 실패했지만, 안 되는 이유를 알게 됐다!",
