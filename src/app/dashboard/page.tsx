@@ -30,10 +30,20 @@ interface KimchiPremium {
   premium: number | null;
 }
 
+interface PriceGap {
+  coin: string;
+  maxGap: number;
+  highExchange: string;
+  lowExchange: string;
+  highPrice: number;
+  lowPrice: number;
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<FundingData[]>([]);
   const [arbitrage, setArbitrage] = useState<ArbitrageOpportunity[]>([]);
   const [kimchi, setKimchi] = useState<KimchiPremium[]>([]);
+  const [priceGaps, setPriceGaps] = useState<PriceGap[]>([]);
   const [avgKimchi, setAvgKimchi] = useState<number>(0);
   const [exchangeRate, setExchangeRate] = useState<number>(1450);
   const [loading, setLoading] = useState(true);
@@ -44,14 +54,16 @@ export default function Dashboard() {
   const fetchData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // Fetch funding data and kimchi premium in parallel
-      const [fundingRes, kimchiRes] = await Promise.all([
+      // Fetch funding data, kimchi premium, and price gaps in parallel
+      const [fundingRes, kimchiRes, priceGapRes] = await Promise.all([
         fetch("/api/funding"),
         fetch("/api/kimchi"),
+        fetch("/api/price-gap?threshold=1&alert=true"),
       ]);
 
       const fundingJson = await fundingRes.json();
       const kimchiJson = await kimchiRes.json();
+      const priceGapJson = await priceGapRes.json();
 
       if (fundingJson.success) {
         setData(fundingJson.data);
@@ -62,6 +74,10 @@ export default function Dashboard() {
         setKimchi(kimchiJson.data);
         setAvgKimchi(kimchiJson.avgPremium || 0);
         setExchangeRate(kimchiJson.exchangeRate || 1450);
+      }
+
+      if (priceGapJson.success) {
+        setPriceGaps(priceGapJson.gaps || []);
       }
 
       setLastUpdate(new Date().toLocaleTimeString("ko-KR"));
@@ -137,7 +153,7 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-        <p className="text-[#737373]">실시간 펀딩비 + 김치 프리미엄 모니터링</p>
+        <p className="text-[#737373]">실시간 펀딩비 + 김치 프리미엄 + 거래소 갭 모니터링</p>
         {lastUpdate && (
           <p className="text-xs text-[#525252] mt-1">마지막 업데이트: {lastUpdate}</p>
         )}
@@ -209,6 +225,79 @@ export default function Dashboard() {
           🔴 양수 = 한국이 비쌈 (역프 기회) · 🟢 음수 = 한국이 쌈 (정프 기회)
         </div>
       </div>
+
+      {/* Price Gap Alert Section - Only show when gaps exist */}
+      {priceGaps.length > 0 && (
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <span className="animate-pulse">🚨</span>
+              CEX/DEX Price Gap Alert
+            </h2>
+            <span className="text-sm bg-red-500/20 text-red-400 px-3 py-1 rounded-full">
+              {priceGaps.length}개 발견
+            </span>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {priceGaps.slice(0, 6).map((gap, idx) => (
+              <div
+                key={gap.coin}
+                className={`bg-[#141414] border rounded-xl p-5 ${
+                  idx === 0
+                    ? "border-red-500/50 bg-red-500/5"
+                    : gap.maxGap >= 2
+                    ? "border-orange-500/50 bg-orange-500/5"
+                    : "border-yellow-500/50 bg-yellow-500/5"
+                }`}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <span className="text-2xl font-bold">{gap.coin}</span>
+                    {idx === 0 && (
+                      <span className="ml-2 text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded animate-pulse">
+                        HOT
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-xl font-mono font-bold ${
+                    gap.maxGap >= 2 ? "text-red-400" : "text-orange-400"
+                  }`}>
+                    {gap.maxGap.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#737373] flex items-center gap-1">
+                      <span className="text-green-400">📈</span> {gap.highExchange}
+                    </span>
+                    <span className="text-[#a3a3a3] font-mono">
+                      ${gap.highPrice < 1 ? gap.highPrice.toFixed(6) : gap.highPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[#737373] flex items-center gap-1">
+                      <span className="text-red-400">📉</span> {gap.lowExchange}
+                    </span>
+                    <span className="text-[#a3a3a3] font-mono">
+                      ${gap.lowPrice < 1 ? gap.lowPrice.toFixed(6) : gap.lowPrice.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-[#262626]">
+                    <span className="text-xs text-blue-400">
+                      💡 {gap.lowExchange}에서 사서 {gap.highExchange}에서 팔기
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 text-xs text-[#525252]">
+            Hyperliquid 상장 코인 전체 모니터링 · 1% 이상 갭만 표시 · CEX: Binance, Bybit, OKX, Bitget
+          </div>
+        </div>
+      )}
 
       {/* Top Arbitrage Opportunities */}
       {arbitrage.length > 0 && (
