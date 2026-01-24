@@ -3,6 +3,13 @@ import Link from "next/link";
 export default function Blog() {
   const posts = [
     {
+      slug: "vibe-coding-day9",
+      title: "바이브 코딩 시작하기 Day 9",
+      description: "남는 도메인으로 원페이지 대시보드 완성! Supabase + Vercel로 에어드랍 트래커, 리서치 노트, 캘린더 통합.",
+      date: "2026.01.24",
+      tags: ["Vibe Coding", "Day 9", "Supabase"],
+    },
+    {
       slug: "vibe-coding-day8",
       title: "바이브 코딩 시작하기 Day 8",
       description: "Triangle Dice를 Base Mini App으로 변환! VPN으로 한국 차단 우회하고 Account Association 완료.",
