@@ -3,6 +3,13 @@ import Link from "next/link";
 export default function Blog() {
   const posts = [
     {
+      slug: "vibe-coding-day10",
+      title: "바이브 코딩 시작하기 Day 10",
+      description: "Triangle Dice 웹 호환성 수정, Clawdbot 리서치, 구형 맥 서버 도전 (실패).",
+      date: "2026.01.26",
+      tags: ["Vibe Coding", "Day 10", "Clawdbot"],
+    },
+    {
       slug: "vibe-coding-day9",
       title: "바이브 코딩 시작하기 Day 9",
       description: "남는 도메인으로 원페이지 대시보드 완성! Supabase + Vercel로 에어드랍 트래커, 리서치 노트, 캘린더 통합.",
